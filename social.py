@@ -42,42 +42,49 @@ def get_transformed_points(boxes, transformation_matrix):
 
 #     return int(np.sqrt(((dis_h)**2) + ((dis_w)**2)))
 
-# Calculates distance between all pairs, if
-def get_distances(boxes1, image_pixels, distance_w, distance_h):
 
-    distances_matrix = []
+def get_distances(boxes1, person_points, distance_w, distance_h):
+    """
+    Calculates distance between all pairs, if they are close, give them risk level according to the distance
+
+    :param boxes1: boxes of each recognized Pedestrian in the image
+    :param person_points: Pedestrians' coordinates after transformation
+    :param distance_w: number of pixels in 6 ft length horizontally
+    :param distance_h: number of pixels in 6 ft length vertically
+    :return: a tuple of 2.  First is the info after transformation, second is the info of original box
+    """
+    distance_lst = []
     colored_boxes = []
     high_risk = 0
     mid_risk = 1
     low_risk = 2
 
-    for i in range(len(image_pixels)):
-        for j in range(len(image_pixels)):
+    for i in range(len(person_points)):
+        for j in range(len(person_points)):
             if i != j:
-#                 dist = cal_dis(image_pixels[i], image_pixels[j], distance_w, distance_h)
-                distance = int(np.sqrt(((float((abs(image_pixels[i][1]-image_pixels[j][1])/distance_h)*180))**2) + ((float((abs(image_pixels[i][0]-image_pixels[j][0])/distance_w)*180))**2)))
+                # calculate the euclidean distance and normalize it to 6 ft which is 180cm.
+                distance = int(np.sqrt(
+                    ((float((abs(person_points[i][1] - person_points[j][1]) / distance_h) * 180)) ** 2) + (
+                            (float((abs(person_points[i][0] - person_points[j][0]) / distance_w) * 180)) ** 2)))
 
                 if distance <= 100:
-
-                    distances_matrix.append([image_pixels[i], image_pixels[j], high_risk])
+                    distance_lst.append([person_points[i], person_points[j], high_risk])
                     colored_boxes.append([boxes1[i], boxes1[j], high_risk])
-                elif distance > 100 and distance <=180:
-
-                    distances_matrix.append([image_pixels[i], image_pixels[j], mid_risk])
+                elif 100 < distance <= 180:
+                    distance_lst.append([person_points[i], person_points[j], mid_risk])
                     colored_boxes.append([boxes1[i], boxes1[j], mid_risk])
                 else:
-
-                    distances_matrix.append([image_pixels[i], image_pixels[j], low_risk])
+                    distance_lst.append([person_points[i], person_points[j], low_risk])
                     colored_boxes.append([boxes1[i], boxes1[j], low_risk])
 
-    return distances_matrix, colored_boxes
+    return distance_lst, colored_boxes
 
 
 
-def count_risk(distances_matrix):
+def count_risk(distance_lst):
     """
     Count for humans at high risk, low risk and no risk
-    :param distances_matrix: a list contain [coordinate1, coordinate2, risk_level] for each close pair
+    :param distance_lst: a list contain [coordinate1, coordinate2, risk_level] for each close pair
     :return: a Tuple of 3 (count_of_high_risk, count_of_low_risk, count_of_no_risk)
     """
 
@@ -87,26 +94,26 @@ def count_risk(distances_matrix):
 
     # add the corresponding people to certain level risk list
     # if one of the pair is already counted, skip it
-    for i in range(len(distances_matrix)):
-        if distances_matrix[i][2] == 0:
-            if not (distances_matrix[i][0] in high_risk or distances_matrix[i][0] in no_risk or distances_matrix[i][0] in low_risk):
-                high_risk.append(distances_matrix[i][0])
-            if not (distances_matrix[i][1] in high_risk or distances_matrix[i][1] in no_risk or distances_matrix[i][1] in low_risk):
-                high_risk.append(distances_matrix[i][1])
+    for i in range(len(distance_lst)):
+        if distance_lst[i][2] == 0:
+            if not (distance_lst[i][0] in high_risk or distance_lst[i][0] in no_risk or distance_lst[i][0] in low_risk):
+                high_risk.append(distance_lst[i][0])
+            if not (distance_lst[i][1] in high_risk or distance_lst[i][1] in no_risk or distance_lst[i][1] in low_risk):
+                high_risk.append(distance_lst[i][1])
 
-    for i in range(len(distances_matrix)):
-        if distances_matrix[i][2] == 1:
-            if not (distances_matrix[i][0] in high_risk or distances_matrix[i][0] in no_risk or distances_matrix[i][0] in low_risk):
-                low_risk.append(distances_matrix[i][0])
-            if not (distances_matrix[i][1] in high_risk or distances_matrix[i][1] in no_risk or distances_matrix[i][1] in low_risk):
-                low_risk.append(distances_matrix[i][1])
+    for i in range(len(distance_lst)):
+        if distance_lst[i][2] == 1:
+            if not (distance_lst[i][0] in high_risk or distance_lst[i][0] in no_risk or distance_lst[i][0] in low_risk):
+                low_risk.append(distance_lst[i][0])
+            if not (distance_lst[i][1] in high_risk or distance_lst[i][1] in no_risk or distance_lst[i][1] in low_risk):
+                low_risk.append(distance_lst[i][1])
 
-    for i in range(len(distances_matrix)):
-        if distances_matrix[i][2] == 2:
-            if not (distances_matrix[i][0] in high_risk or distances_matrix[i][0] in no_risk or distances_matrix[i][0] in low_risk):
-                no_risk.append(distances_matrix[i][0])
-            if not (distances_matrix[i][1] in high_risk or distances_matrix[i][1] in no_risk or distances_matrix[i][1] in low_risk):
-                no_risk.append(distances_matrix[i][1])
+    for i in range(len(distance_lst)):
+        if distance_lst[i][2] == 2:
+            if not (distance_lst[i][0] in high_risk or distance_lst[i][0] in no_risk or distance_lst[i][0] in low_risk):
+                no_risk.append(distance_lst[i][0])
+            if not (distance_lst[i][1] in high_risk or distance_lst[i][1] in no_risk or distance_lst[i][1] in low_risk):
+                no_risk.append(distance_lst[i][1])
     return len(high_risk), len(low_risk), len(no_risk)
 
 

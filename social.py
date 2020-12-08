@@ -42,7 +42,7 @@ def get_transformed_points(boxes, transformation_matrix):
 
 #     return int(np.sqrt(((dis_h)**2) + ((dis_w)**2)))
 
-# Function calculates distance between all pairs and calculates closeness ratio.
+# Calculates distance between all pairs, if
 def get_distances(boxes1, image_pixels, distance_w, distance_h):
 
     distances_matrix = []
@@ -74,38 +74,43 @@ def get_distances(boxes1, image_pixels, distance_w, distance_h):
 
 
 
-# Count for humans at high risk, low risk and no risk, and add coordinate to the
 def count_risk(distances_matrix):
+    """
+    Count for humans at high risk, low risk and no risk
+    :param distances_matrix: a list contain [coordinate1, coordinate2, risk_level] for each close pair
+    :return: a Tuple of 3 (count_of_high_risk, count_of_low_risk, count_of_no_risk)
+    """
 
     high_risk = []
     low_risk = []
     no_risk = []
 
+    # add the corresponding people to certain level risk list
     # if one of the pair is already counted, skip it
     for i in range(len(distances_matrix)):
         if distances_matrix[i][2] == 0:
-            if (distances_matrix[i][0] not in high_risk) and (distances_matrix[i][0] not in no_risk) and (distances_matrix[i][0] not in low_risk):
+            if not (distances_matrix[i][0] in high_risk or distances_matrix[i][0] in no_risk or distances_matrix[i][0] in low_risk):
                 high_risk.append(distances_matrix[i][0])
-            if (distances_matrix[i][1] not in high_risk) and (distances_matrix[i][1] not in no_risk) and (distances_matrix[i][1] not in low_risk):
+            if not (distances_matrix[i][1] in high_risk or distances_matrix[i][1] in no_risk or distances_matrix[i][1] in low_risk):
                 high_risk.append(distances_matrix[i][1])
 
     for i in range(len(distances_matrix)):
         if distances_matrix[i][2] == 1:
-            if (distances_matrix[i][0] not in high_risk) and (distances_matrix[i][0] not in no_risk) and (distances_matrix[i][0] not in low_risk):
+            if not (distances_matrix[i][0] in high_risk or distances_matrix[i][0] in no_risk or distances_matrix[i][0] in low_risk):
                 low_risk.append(distances_matrix[i][0])
-            if (distances_matrix[i][1] not in high_risk) and (distances_matrix[i][1] not in no_risk) and (distances_matrix[i][1] not in low_risk):
+            if not (distances_matrix[i][1] in high_risk or distances_matrix[i][1] in no_risk or distances_matrix[i][1] in low_risk):
                 low_risk.append(distances_matrix[i][1])
 
     for i in range(len(distances_matrix)):
         if distances_matrix[i][2] == 2:
-            if (distances_matrix[i][0] not in high_risk) and (distances_matrix[i][0] not in no_risk) and (distances_matrix[i][0] not in low_risk):
+            if not (distances_matrix[i][0] in high_risk or distances_matrix[i][0] in no_risk or distances_matrix[i][0] in low_risk):
                 no_risk.append(distances_matrix[i][0])
-            if (distances_matrix[i][1] not in high_risk) and (distances_matrix[i][1] not in no_risk) and (distances_matrix[i][1] not in low_risk):
+            if not (distances_matrix[i][1] in high_risk or distances_matrix[i][1] in no_risk or distances_matrix[i][1] in low_risk):
                 no_risk.append(distances_matrix[i][1])
+    return len(high_risk), len(low_risk), len(no_risk)
 
-    return (len(high_risk),len(low_risk),len(no_risk))
 
-
+# transform the selected region to bird's eye view
 def transform_frame(frame, transformation_matrix):
     rows, cols, _ = frame.shape
     new_frame = cv2.warpPerspective(frame, transformation_matrix, (cols, rows))
@@ -113,10 +118,9 @@ def transform_frame(frame, transformation_matrix):
     scale_h = int(new_frame.shape[1] / frame.shape[1])
     return new_frame, scale_w, scale_h
 
-# Function to draw Bird Eye View for region of interest(ROI). Red, orange, Green points represents risk to human.
-# Red: High Risk
-# Orange: Low Risk
-# Green: No Risk
+
+# Draw the Bird Eye View for region selected. Red, Orange, Green points represents different risk levels to human.
+# Red: High Risk, Orange: Low Risk, Green: No Risk
 def bird_eye_view(frame, distances_matrix, bottom_points, risk_count, transformation_matrix):
     h = frame.shape[0]
     w = frame.shape[1]
@@ -181,7 +185,9 @@ def bird_eye_view(frame, distances_matrix, bottom_points, risk_count, transforma
     # blank_image = np.vstack((blank_image,pad))
 
     return new_frame
-# Function to draw bounding boxes according to risk factor for humans in a frame and draw lines between
+
+
+# Draw bounding boxes according to risk factor for humans in a frame and draw lines between
 # boxes according to risk factor between two humans.
 # Red: High Risk
 # Orange: Low Risk
@@ -237,13 +243,7 @@ def social_distancing_view(frame, distances_matrix, boxes, risk_count):
     return frame
 
 
-# In[19]:
 
-
-confid = 0.5
-thresh = 0.5
-# mouse_pts = [(26, 279), (136, 444), (609, 377), (215, 273), (169, 373), (200, 403), (201, 358), (226, 387)]
-mouse_pts = []
 
 # Function to get points for Region of Interest(ROI) and distance scale. It will take 8 points on first frame using mouse click
 # event.First four points will define ROI where we want to moniter social distancing. Also these points should form parallel  
@@ -421,13 +421,7 @@ def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1):
 
 
 
-# In[20]:
 
-
-confid = 0.5
-thresh = 0.5
-# mouse_pts = [(26, 279), (136, 444), (609, 377), (215, 273), (169, 373), (200, 403), (201, 358), (226, 387)]
-mouse_pts = []
 
 # Function to get points for Region of Interest(ROI) and distance scale. It will take 8 points on first frame using mouse click
 # event.First four points will define ROI where we want to moniter social distancing. Also these points should form parallel  
@@ -599,20 +593,19 @@ def calculate_social_distancing4colab(vid_path, net, output_dir, output_vid, ln1
 # In[23]:
 
 
-def main(output_dir = "./output/", output_vid = "./output_vid/", video_path = "data/example2.mp4", weightsPath = "models/yolov3.weights", configPath = "models/yolov3.cfg"):
-
-    #     output_dir = "./output/"
-
-    #     output_vid = "./output_vid/"
-
-    #     video_path = "data/example2.mp4"
-    #     # load Yolov3 weights
-
-    #     weightsPath = "models/yolov3.weights"
-    #     configPath = "models/yolov3.cfg"
+def main(output_dir="./output/", output_vid="./output_vid/", video_path="data/example2.mp4",
+         weights_path="models/yolov3.weights", config_path="models/yolov3.cfg"):
+    """
+    :param output_dir: the path of output video
+    :param output_vid: the path of output bird's eye view video
+    :param video_path: the path of input video
+    :param weights_path: Yolov3 weights path
+    :param config_path: Yolov3 config path
+    :return:
+    """
     global mouse_pts
     mouse_pts = []
-    net_yl = cv2.dnn.readNetFromDarknet(configPath, weightsPath)
+    net_yl = cv2.dnn.readNetFromDarknet(config_path, weights_path)
     ln = net_yl.getLayerNames()
     ln1 = [ln[i[0] - 1] for i in net_yl.getUnconnectedOutLayers()]
 
@@ -625,7 +618,11 @@ def main(output_dir = "./output/", output_vid = "./output_vid/", video_path = "d
     calculate_social_distancing(video_path, net_yl, output_dir, output_vid, ln1)
 
 
-main(video_path = "data/example.mp4")
+if __name__ == "__main__":
+    confid = 0.5
+    thresh = 0.5
+    mouse_pts = []
+    main(video_path = "data/example.mp4")
 
 
 

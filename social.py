@@ -41,8 +41,8 @@ def get_distances(boxes1, person_points, distance_w, distance_h):
     distance_lst = []
     colored_boxes = []
     high_risk = 0
-    mid_risk = 1
-    low_risk = 2
+    low_risk = 1
+    no_risk = 2
 
     for i in range(len(person_points)):
         for j in range(len(person_points)):
@@ -56,11 +56,11 @@ def get_distances(boxes1, person_points, distance_w, distance_h):
                     distance_lst.append([person_points[i], person_points[j], high_risk])
                     colored_boxes.append([boxes1[i], boxes1[j], high_risk])
                 elif 100 < distance <= 180:
-                    distance_lst.append([person_points[i], person_points[j], mid_risk])
-                    colored_boxes.append([boxes1[i], boxes1[j], mid_risk])
-                else:
                     distance_lst.append([person_points[i], person_points[j], low_risk])
                     colored_boxes.append([boxes1[i], boxes1[j], low_risk])
+                else:
+                    distance_lst.append([person_points[i], person_points[j], no_risk])
+                    colored_boxes.append([boxes1[i], boxes1[j], no_risk])
 
     return distance_lst, colored_boxes
 
@@ -395,10 +395,10 @@ def get_mouse_points(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
         if len(mouse_pts) < 4:
             # points for region selected of bird's eye view
-            cv2.circle(image, (x, y), 5, (0, 0, 255), 10)
+            cv2.circle(image, (x, y), 4, (0, 0, 255), -1)
         else:
             # points to define safe distance
-            cv2.circle(image, (x, y), 5, (255, 0, 0), 10)
+            cv2.circle(image, (x, y), 4, (255, 0, 0), -1)
         # draw a line to better visualize
         if 1 <= len(mouse_pts) <= 3:
             cv2.line(image, (x, y), (mouse_pts[len(mouse_pts)-1][0], mouse_pts[len(mouse_pts)-1][1]), (70, 70, 70), 2)
@@ -413,143 +413,6 @@ def get_mouse_points(event, x, y, flags, param):
 
 
 
-def calculate_social_distancing4colab(vid_path, net, output_dir, output_vid, ln1):
-
-    points = []
-    global image
-    count = 0
-    vs = cv2.VideoCapture(vid_path)
-
-    # Get video height, width and fps
-    height = int(vs.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    width = int(vs.get(cv2.CAP_PROP_FRAME_WIDTH))
-    fps = int(vs.get(cv2.CAP_PROP_FPS))
-
-    (success, frame) = vs.read()
-    (H, W) = frame.shape[:2]
-
-
-    points = mouse_pts
-
-
-    # Using first 4 points or coordinates for perspective transformation. The region marked by these 4 points are 
-    # considered ROI. This polygon shaped ROI is then warped into a rectangle which becomes the bird eye view. 
-    # This bird eye view then has the property property that points are distributed uniformally horizontally and 
-    # vertically(scale for horizontal and vertical direction will be different). So for bird eye view points are 
-    # equally distributed, which was not case for normal view.
-
-    src = np.float32(np.array(points[:4]))
-    dst = np.float32([[0, H], [W, H], [W, 0], [0, 0]])
-    prespective_transform = cv2.getPerspectiveTransform(src, dst)
-    new_frame, scale_w, scale_h = transform_frame(frame, prespective_transform)
-
-    fourcc = cv2.VideoWriter_fourcc(*"XVID")
-    output_movie = cv2.VideoWriter("./output_vid/distancing.avi", fourcc, fps, (width, height+140))
-#     video_width, video_height = img.shape[1], img.shape[0]
-#     output_movie = cv2.VideoWriter("./output_vid/distancing.avi", fourcc, fps, (video_width, video_height))
-    bird_movie = cv2.VideoWriter("./output_vid/bird_eye_view.avi", fourcc, fps, (int(width * scale_w), int(height * scale_h)))
-
-
-    while True:
-
-        (success, frame) = vs.read()
-
-        if not success:
-#             print('here')
-            break
-
-        (H, W) = frame.shape[:2]
-
-
-        # using next 3 points for horizontal and vertical unit length(in this case 180 cm)
-        pts = np.float32(np.array([points[4:7]]))
-        warped_pt = cv2.perspectiveTransform(pts, prespective_transform)[0]
-
-        # since bird eye view has property that all points are equidistant in horizontal and vertical direction.
-        # distance_w and distance_h will give us 180 cm distance in both horizontal and vertical directions
-        # (how many pixels will be there in 180cm length in horizontal and vertical direction of birds eye view),
-        # which we can use to calculate distance between two humans in transformed view or bird eye view
-        distance_w = np.sqrt((warped_pt[0][0] - warped_pt[1][0]) ** 2 + (warped_pt[0][1] - warped_pt[1][1]) ** 2)
-        distance_h = np.sqrt((warped_pt[0][0] - warped_pt[2][0]) ** 2 + (warped_pt[0][1] - warped_pt[2][1]) ** 2)
-        pnts = np.array(points[:4], np.int32)
-        cv2.polylines(frame, [pnts], True, (70, 70, 70), thickness=2)
-
-    ####################################################################################
-
-        # YOLO v3
-        blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=False)
-        net.setInput(blob)
-        start = time.time()
-        layerOutputs = net.forward(ln1)
-        end = time.time()
-        boxes = []
-        confidences = []
-        classIDs = []
-
-        for output in layerOutputs:
-            for detection in output:
-                scores = detection[5:]
-                classID = np.argmax(scores)
-                confidence = scores[classID]
-                # detecting humans in frame
-                if classID == 0:
-
-                    if confidence > confid:
-
-                        box = detection[0:4] * np.array([W, H, W, H])
-                        (centerX, centerY, width, height) = box.astype("int")
-
-                        x = int(centerX - (width / 2))
-                        y = int(centerY - (height / 2))
-
-                        boxes.append([x, y, int(width), int(height)])
-                        confidences.append(float(confidence))
-                        classIDs.append(classID)
-
-        idxs = cv2.dnn.NMSBoxes(boxes, confidences, confid, thresh)
-        font = cv2.FONT_HERSHEY_PLAIN
-        boxes1 = []
-        for i in range(len(boxes)):
-            if i in idxs:
-                boxes1.append(boxes[i])
-                x,y,w,h = boxes[i]
-
-        if len(boxes1) == 0:
-            count = count + 1
-            continue
-
-        # Here we will be using bottom center point of bounding box for all boxes and will transform all those
-        # bottom center points to bird eye view
-        person_points = get_transformed_points(boxes1, prespective_transform)
-
-        # Here we will calculate distance between transformed points(humans)
-        distances_mat, bxs_mat = get_distances(boxes1, person_points, distance_w, distance_h)
-        risk_count = count_risk(distances_mat)
-
-        frame1 = np.copy(frame)
-
-        # Draw bird eye view and frame with bouding boxes around humans according to risk factor    
-        bird_image = bird_eye_view(frame, distances_mat, person_points, risk_count, prespective_transform)
-        img = social_distancing_view(frame1, bxs_mat, boxes1, risk_count)
-
-        # Show/write image and videos
-        if count != 0:
-            output_movie.write(img)
-            bird_movie.write(bird_image)
-
-            cv2_imshow(img)
-            cv2.imwrite(output_dir+"frame%d.jpg" % count, img)
-            cv2.imwrite(output_dir+"bird_eye_view/frame%d.jpg" % count, bird_image)
-
-        count = count + 1
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    vs.release()
-    cv2.destroyAllWindows()
-
-
-# In[23]:
 
 
 def main(output_dir="./output/", output_vid="./output_vid/", video_path="data/example2.mp4",
@@ -578,10 +441,10 @@ def main(output_dir="./output/", output_vid="./output_vid/", video_path="data/ex
 
 
 if __name__ == "__main__":
-    confid = 0.5
-    thresh = 0.5
+    confid = 0.01
+    thresh = 0.1
     mouse_pts = []
-    main(video_path = "data/example.mp4")
+    main(video_path = "data/example3.mp4")
 
 
 

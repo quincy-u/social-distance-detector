@@ -24,19 +24,29 @@ class box:
 
 
 def find_mid_points(box):
-    # box = [x_left_top, y_left_top, width, height]
+    '''
+    find the bottom mid point of the box
+    :param box: the box object
+    :return: return the coordinate the bottom mid point
+    '''
     x = box.x + box.w * 0.5
     y = box.y + box.h
     middle_point = np.array([[[int(x), int(y)]]], dtype="float32")
     return middle_point
 
-# Function to calculate bottom center for all bounding boxes and transform prespective for all points.
+
 def get_transformed_points(boxes, transformation_matrix):
+    '''
+    get the transformed points
+
+    :param boxes: the list of boxes for each detected people
+    :param transformation_matrix: the transformation matrix
+    :return: the transformed point of each person
+    '''
 
     image_pixels = []
     for box in boxes:
         coor = find_mid_points(box)
-        #pnts = np.array([[[int(box[0]+(box[2]*0.5)),int(box[1]+(box[3]*0.5))]]] , dtype="float32")
         new_coor = cv2.perspectiveTransform(coor, transformation_matrix)[0][0]
         image_pixel = [int(new_coor[0]), int(new_coor[1])]
         image_pixels.append(image_pixel)
@@ -52,7 +62,8 @@ def get_distances(boxes, person_points, distance_w, distance_h):
     :param person_points: Pedestrians' coordinates after transformation
     :param distance_w: number of pixels in 6 ft length horizontally
     :param distance_h: number of pixels in 6 ft length vertically
-    :return: a tuple of 2.  First is the info after transformation, second is the info of original box
+    :return: a tuple of 3.  First is all the pairs of boxes after transformation, the second is all the pairs before the
+             transformation. The last one is the set of all the boxes
     """
     distance_lst = []
     colored_pairs = []
@@ -79,6 +90,8 @@ def get_distances(boxes, person_points, distance_w, distance_h):
                 distance_lst.append([person_points[i], person_points[j], risk_lvl])
                 colored_pairs.append([boxes[i], boxes[j], risk_lvl])
 
+                # generate the set of all the boxes.
+                # Only update the risk level of a person if the current risk lvl is higher than the stored one.
                 for box in [boxes[i], boxes[j]]:
                     if box not in colored_boxes:
                         colored_boxes.append(box)
@@ -114,12 +127,6 @@ def bird_eye_view(frame, distances_matrix, bottom_points, transformation_matrix)
 
     new_frame, scale_w, scale_h = transform_frame(frame, transformation_matrix)
 
-#     scale_w =int(new_frame.shape[0] / frame.shape[0])
-#     scale_h = int(new_frame.shape[1] / frame.shape[1])
-
-#     blank_image = np.zeros((int(h * scale_h), int(w * scale_w), 3), np.uint8)
-#     blank_image[:] = white
-#     warped_pts = []
     r = []
     g = []
     o = []
@@ -158,12 +165,6 @@ def bird_eye_view(frame, distances_matrix, bottom_points, transformation_matrix)
     for i in r:
         new_frame = cv2.circle(new_frame, (int(i[0]  * scale_w), int(i[1] * scale_h)), 5, red, 5)
 
-    # pad = np.full((100,blank_image.shape[1],3), [110, 110, 100], dtype=np.uint8)
-    # cv2.putText(pad, "-- HIGH RISK : " + str(risk_count[0]) + " people", (50, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-    # cv2.putText(pad, "-- LOW RISK : " + str(risk_count[1]) + " people", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,165,255), 1)
-    # cv2.putText(pad, "-- SAFE : " + str(risk_count[2]) + " people", (50,  80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-    # blank_image = np.vstack((blank_image,pad))
-
     return new_frame
 
 
@@ -173,6 +174,14 @@ def bird_eye_view(frame, distances_matrix, bottom_points, transformation_matrix)
 # Orange: Low Risk
 # Green: No Risk
 def social_distancing_view(frame, colored_pairs, colored_boxes):
+    '''
+    Draw the boxes and lines on the current frame
+
+    :param frame: the initial clean frame
+    :param colored_pairs: all the paris of the boxes in the form of (box1, box2, risk_level)
+    :param colored_boxes: the set of all the boxes with parameters set correctly
+    :return: the final frame with drawn boxes and lines on it
+    '''
 
     red = (0, 0, 255)
     green = (0, 255, 0)
@@ -223,7 +232,8 @@ def social_distancing_view(frame, colored_pairs, colored_boxes):
 
     return frame
 
-def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1):
+
+def calculate_social_distancing(vid_path, net, output_dir, ln1):
 
     points = []
     global image
@@ -263,8 +273,6 @@ def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1):
 
     fourcc = cv2.VideoWriter_fourcc(*"XVID")
     output_movie = cv2.VideoWriter("./output_vid/distancing.avi", fourcc, fps, (width, height+140))
-#     video_width, video_height = img.shape[1], img.shape[0]
-#     output_movie = cv2.VideoWriter("./output_vid/distancing.avi", fourcc, fps, (video_width, video_height))
     bird_movie = cv2.VideoWriter("./output_vid/bird_eye_view.avi", fourcc, fps, (int(width * scale_w), int(height * scale_h)))
 
 
@@ -273,7 +281,6 @@ def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1):
         (success, frame) = vs.read()
 
         if not success:
-#             print('here')
             break
 
         (H, W) = frame.shape[:2]
@@ -327,12 +334,6 @@ def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1):
                         classIDs.append(classID)
 
         idxs = cv2.dnn.NMSBoxes(boxes_4_cv, confidences, confid, thresh)
-        # font = cv2.FONT_HERSHEY_PLAIN
-        # boxes1 = []
-        # for i in range(len(boxes)):
-        #     if i in idxs:
-        #         boxes1.append(boxes[i])
-        #         x,y,w,h = boxes[i]
 
         boxes1 = []
         for i in range(len(boxes)):

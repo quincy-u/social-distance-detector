@@ -27,21 +27,6 @@ def get_transformed_points(boxes, transformation_matrix):
 
     return image_pixels
 
-# Function calculates distance between two points(humans). distance_w, distance_h represents number
-# of pixels in 180cm length horizontally and vertically. We calculate horizontal and vertical
-# distance in pixels for two points and get ratio in terms of 180 cm distance using distance_w, distance_h.
-# Then we calculate how much cm distance is horizontally and vertically and then using pythagoras
-# we calculate distance between points in terms of cm. 
-# def cal_dis(p1, p2, distance_w, distance_h):
-
-#     h = abs(p2[1]-p1[1])
-#     w = abs(p2[0]-p1[0])
-
-#     dis_w = float((w/distance_w)*180)
-#     dis_h = float((h/distance_h)*180)
-
-#     return int(np.sqrt(((dis_h)**2) + ((dis_w)**2)))
-
 
 def get_distances(boxes1, person_points, distance_w, distance_h):
     """
@@ -80,10 +65,10 @@ def get_distances(boxes1, person_points, distance_w, distance_h):
     return distance_lst, colored_boxes
 
 
-
 def count_risk(distance_lst):
     """
     Count for humans at high risk, low risk and no risk
+
     :param distance_lst: a list contain [coordinate1, coordinate2, risk_level] for each close pair
     :return: a Tuple of 3 (count_of_high_risk, count_of_low_risk, count_of_no_risk)
     """
@@ -117,8 +102,14 @@ def count_risk(distance_lst):
     return len(high_risk), len(low_risk), len(no_risk)
 
 
-# transform the selected region to bird's eye view
 def transform_frame(frame, transformation_matrix):
+    """
+    transform the selected region to bird's eye view
+
+    :param frame: the original image
+    :param transformation_matrix: the transformation matrix
+    :return: the image after transform, width scale, and height scale
+    """
     rows, cols, _ = frame.shape
     new_frame = cv2.warpPerspective(frame, transformation_matrix, (cols, rows))
     scale_w = int(new_frame.shape[0] / frame.shape[0])
@@ -141,8 +132,6 @@ def bird_eye_view(frame, distances_matrix, bottom_points, risk_count, transforma
 
 #     scale_w =int(new_frame.shape[0] / frame.shape[0])
 #     scale_h = int(new_frame.shape[1] / frame.shape[1])
-
-
 
 #     blank_image = np.zeros((int(h * scale_h), int(w * scale_w), 3), np.uint8)
 #     blank_image[:] = white
@@ -248,40 +237,6 @@ def social_distancing_view(frame, distances_matrix, boxes, risk_count):
     frame = np.vstack((frame,pad))
 
     return frame
-
-
-
-
-# Function to get points for Region of Interest(ROI) and distance scale. It will take 8 points on first frame using mouse click
-# event.First four points will define ROI where we want to moniter social distancing. Also these points should form parallel  
-# lines in real world if seen from above(birds eye view). Next 3 points will define 6 feet(unit length) distance in     
-# horizontal and vertical direction and those should form parallel lines with ROI. Unit length we can take based on choice.
-# Points should pe in pre-defined order - bottom-left, bottom-right, top-right, top-left, point 5 and 6 should form     
-# horizontal line and point 5 and 7 should form verticle line. Horizontal and vertical scale will be different. 
-
-# Function will be called on mouse events                                                          
-
-def get_mouse_points(event, x, y, flags, param):
-
-    global mouse_pts
-    if event == cv2.EVENT_LBUTTONDOWN:
-        if len(mouse_pts) < 4:
-            cv2.circle(image, (x, y), 5, (0, 0, 255), 10)
-        else:
-            cv2.circle(image, (x, y), 5, (255, 0, 0), 10)
-
-        if len(mouse_pts) >= 1 and len(mouse_pts) <= 3:
-            cv2.line(image, (x, y), (mouse_pts[len(mouse_pts)-1][0], mouse_pts[len(mouse_pts)-1][1]), (70, 70, 70), 2)
-            if len(mouse_pts) == 3:
-                cv2.line(image, (x, y), (mouse_pts[0][0], mouse_pts[0][1]), (70, 70, 70), 2)
-
-        if "mouse_pts" not in globals():
-            mouse_pts = []
-        mouse_pts.append((x, y))
-#         print("Point detected")
-#         print(mouse_pts)
-
-
 
 def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1):
 
@@ -426,29 +381,26 @@ def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1):
     vs.release()
     cv2.destroyAllWindows()
 
-
-
-
-
-# Function to get points for Region of Interest(ROI) and distance scale. It will take 8 points on first frame using mouse click
-# event.First four points will define ROI where we want to moniter social distancing. Also these points should form parallel  
-# lines in real world if seen from above(birds eye view). Next 3 points will define 6 feet(unit length) distance in     
-# horizontal and vertical direction and those should form parallel lines with ROI. Unit length we can take based on choice.
-# Points should pe in pre-defined order - bottom-left, bottom-right, top-right, top-left, point 5 and 6 should form     
-# horizontal line and point 5 and 7 should form verticle line. Horizontal and vertical scale will be different. 
-
-# Function will be called on mouse events                                                          
-
 def get_mouse_points(event, x, y, flags, param):
-
+    """
+    The callback function of cv2 mouse click
+    Add all points to the global variable mouse_pts.
+    First 4 points form two parallel lines in the real world.
+    i.e. (Top left, Bottom left, Bottom right, Top right)
+    The last 3 points form two orthogonal lines in the real world.
+    Point 5 and 6 should form horizontal line and point 5 and 7 should form vertical line.
+    The length of those two lines should be the safe distance which is 6 ft.
+    """
     global mouse_pts
     if event == cv2.EVENT_LBUTTONDOWN:
-        if len(mouse_pts) < 4: # points for ROI
+        if len(mouse_pts) < 4:
+            # points for region selected of bird's eye view
             cv2.circle(image, (x, y), 5, (0, 0, 255), 10)
-        else: # points to define 6 deet
+        else:
+            # points to define safe distance
             cv2.circle(image, (x, y), 5, (255, 0, 0), 10)
-
-        if len(mouse_pts) >= 1 and len(mouse_pts) <= 3:
+        # draw a line to better visualize
+        if 1 <= len(mouse_pts) <= 3:
             cv2.line(image, (x, y), (mouse_pts[len(mouse_pts)-1][0], mouse_pts[len(mouse_pts)-1][1]), (70, 70, 70), 2)
             if len(mouse_pts) == 3:
                 cv2.line(image, (x, y), (mouse_pts[0][0], mouse_pts[0][1]), (70, 70, 70), 2)

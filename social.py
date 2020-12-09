@@ -122,7 +122,7 @@ def bird_eye_view(frame, distances_matrix, bottom_points, transformation_matrix)
 
     red = (0, 0, 255)
     green = (0, 255, 0)
-    yellow = (255, 255, 0)
+    yellow = (0, 255, 255)
 
     new_frame, scale_w, scale_h = transform_frame(frame, transformation_matrix)
 
@@ -424,7 +424,7 @@ def get_mouse_points(event, x, y, flags, param):
 
 
 def main(output_dir="./output/", output_vid="./output_vid/", video_path="data/example1.mp4",
-         weights_path="models/yolov3.weights", config_path="models/yolov3.cfg"):
+         weights_path="models/yolov4-tiny-pedestrian_last.weights", config_path="models/yolov4-tiny-pedestrian.cfg"):
     """
     :param output_dir: the path of output video
     :param output_vid: the path of output bird's eye view video

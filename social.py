@@ -230,9 +230,9 @@ def social_distancing_view(frame, colored_pairs, colored_boxes):
     font_size = 0.8
     font_thickness = 2
     cv2.putText(pad, "Count of people:", (20, 30), font, font_size, (0, 51, 102), font_thickness)
-    cv2.putText(pad, "overly close :<", (100, 70), font, font_size, red, font_thickness)
+    cv2.putText(pad, "overly close :(", (100, 70), font, font_size, red, font_thickness)
     cv2.putText(pad, "a little close :|", (350, 70), font, font_size, yellow, font_thickness)
-    cv2.putText(pad, "safe :>", (600, 70), font, font_size, green, font_thickness)
+    cv2.putText(pad, "safe :)", (600, 70), font, font_size, green, font_thickness)
     cv2.putText(pad, str(low_risk_count), (180, 110), font, font_size, red, font_thickness)
     cv2.putText(pad, str(high_risk_count), (430, 110), font, font_size, yellow, font_thickness)
     cv2.putText(pad, str(safe_count) , (680, 110), font, font_size, green, font_thickness)

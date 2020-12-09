@@ -7,10 +7,26 @@ import time
 import argparse
 
 
+class box:
+    def __init__(self, x, y, w, h):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.risk = 2  # default risk level for each person is green
+
+    def set_risk(self, risk):
+        self.risk = risk
+
+    def parameters(self):
+        return self.x, self.y, self.w, self.h
+
+
+
 def find_mid_points(box):
     # box = [x_left_top, y_left_top, width, height]
-    x = box[0] + box[2] * 0.5
-    y = box[1] + box[3]
+    x = box.x + box.w * 0.5
+    y = box.y + box.h
     middle_point = np.array([[[int(x), int(y)]]], dtype="float32")
     return middle_point
 
@@ -28,21 +44,22 @@ def get_transformed_points(boxes, transformation_matrix):
     return image_pixels
 
 
-def get_distances(boxes1, person_points, distance_w, distance_h):
+def get_distances(boxes, person_points, distance_w, distance_h):
     """
     Calculates distance between all pairs, if they are close, give them risk level according to the distance
 
-    :param boxes1: boxes of each recognized Pedestrian in the image
+    :param boxes: boxes of each recognized Pedestrian in the image
     :param person_points: Pedestrians' coordinates after transformation
     :param distance_w: number of pixels in 6 ft length horizontally
     :param distance_h: number of pixels in 6 ft length vertically
     :return: a tuple of 2.  First is the info after transformation, second is the info of original box
     """
     distance_lst = []
+    colored_pairs = []
     colored_boxes = []
     high_risk = 0
     low_risk = 1
-    no_risk = 2
+    safe = 2
 
     for i in range(len(person_points)):
         for j in range(len(person_points)):
@@ -53,53 +70,20 @@ def get_distances(boxes1, person_points, distance_w, distance_h):
                             (float((abs(person_points[i][0] - person_points[j][0]) / distance_w) * 180)) ** 2)))
 
                 if distance <= 100:
-                    distance_lst.append([person_points[i], person_points[j], high_risk])
-                    colored_boxes.append([boxes1[i], boxes1[j], high_risk])
+                    risk_lvl = high_risk
                 elif 100 < distance <= 180:
-                    distance_lst.append([person_points[i], person_points[j], low_risk])
-                    colored_boxes.append([boxes1[i], boxes1[j], low_risk])
+                    risk_lvl = low_risk
                 else:
-                    distance_lst.append([person_points[i], person_points[j], no_risk])
-                    colored_boxes.append([boxes1[i], boxes1[j], no_risk])
+                    risk_lvl = safe
 
-    return distance_lst, colored_boxes
+                distance_lst.append([person_points[i], person_points[j], risk_lvl])
+                colored_pairs.append([boxes[i], boxes[j], risk_lvl])
 
-
-def count_risk(distance_lst):
-    """
-    Count for humans at high risk, low risk and no risk
-
-    :param distance_lst: a list contain [coordinate1, coordinate2, risk_level] for each close pair
-    :return: a Tuple of 3 (count_of_high_risk, count_of_low_risk, count_of_no_risk)
-    """
-
-    high_risk = []
-    low_risk = []
-    no_risk = []
-
-    # add the corresponding people to certain level risk list
-    # if one of the pair is already counted, skip it
-    for i in range(len(distance_lst)):
-        if distance_lst[i][2] == 0:
-            if not (distance_lst[i][0] in high_risk or distance_lst[i][0] in no_risk or distance_lst[i][0] in low_risk):
-                high_risk.append(distance_lst[i][0])
-            if not (distance_lst[i][1] in high_risk or distance_lst[i][1] in no_risk or distance_lst[i][1] in low_risk):
-                high_risk.append(distance_lst[i][1])
-
-    for i in range(len(distance_lst)):
-        if distance_lst[i][2] == 1:
-            if not (distance_lst[i][0] in high_risk or distance_lst[i][0] in no_risk or distance_lst[i][0] in low_risk):
-                low_risk.append(distance_lst[i][0])
-            if not (distance_lst[i][1] in high_risk or distance_lst[i][1] in no_risk or distance_lst[i][1] in low_risk):
-                low_risk.append(distance_lst[i][1])
-
-    for i in range(len(distance_lst)):
-        if distance_lst[i][2] == 2:
-            if not (distance_lst[i][0] in high_risk or distance_lst[i][0] in no_risk or distance_lst[i][0] in low_risk):
-                no_risk.append(distance_lst[i][0])
-            if not (distance_lst[i][1] in high_risk or distance_lst[i][1] in no_risk or distance_lst[i][1] in low_risk):
-                no_risk.append(distance_lst[i][1])
-    return len(high_risk), len(low_risk), len(no_risk)
+                for box in [boxes[i], boxes[j]]:
+                    if box not in colored_boxes:
+                        colored_boxes.append(box)
+                    box.set_risk(min(risk_lvl, box.risk))
+    return distance_lst, colored_pairs, colored_boxes
 
 
 def transform_frame(frame, transformation_matrix):
@@ -119,7 +103,7 @@ def transform_frame(frame, transformation_matrix):
 
 # Draw the Bird Eye View for region selected. Red, Orange, Green points represents different risk levels to human.
 # Red: High Risk, Orange: Low Risk, Green: No Risk
-def bird_eye_view(frame, distances_matrix, bottom_points, risk_count, transformation_matrix):
+def bird_eye_view(frame, distances_matrix, bottom_points, transformation_matrix):
     h = frame.shape[0]
     w = frame.shape[1]
 
@@ -147,7 +131,7 @@ def bird_eye_view(frame, distances_matrix, bottom_points, risk_count, transforma
             if (distances_matrix[i][1] not in r) and (distances_matrix[i][1] not in g) and (distances_matrix[i][1] not in o):
                 r.append(distances_matrix[i][1])
 
-            new_frame = cv2.line(new_frame, (int(distances_matrix[i][0][0] * scale_w), int(distances_matrix[i][0][1] * scale_h)), (int(distances_matrix[i][1][0] * scale_w), int(distances_matrix[i][1][1]* scale_h)), red, 2)
+            new_frame = cv2.line(new_frame, (int(distances_matrix[i][0][0] * scale_w), int(distances_matrix[i][0][1] * scale_h)), (int(distances_matrix[i][1][0] * scale_w), int(distances_matrix[i][1][1] * scale_h)), red, 2)
 
     for i in range(len(distances_matrix)):
 
@@ -157,7 +141,7 @@ def bird_eye_view(frame, distances_matrix, bottom_points, risk_count, transforma
             if (distances_matrix[i][1] not in r) and (distances_matrix[i][1] not in g) and (distances_matrix[i][1] not in o):
                 o.append(distances_matrix[i][1])
 
-            new_frame = cv2.line(new_frame, (int(distances_matrix[i][0][0] * scale_w), int(distances_matrix[i][0][1] * scale_h)), (int(distances_matrix[i][1][0] * scale_w), int(distances_matrix[i][1][1]* scale_h)), orange, 2)
+            new_frame = cv2.line(new_frame, (int(distances_matrix[i][0][0] * scale_w), int(distances_matrix[i][0][1]* scale_h)), (int(distances_matrix[i][1][0] * scale_w), int(distances_matrix[i][1][1] * scale_h)), orange, 2)
 
     for i in range(len(distances_matrix)):
 
@@ -187,53 +171,54 @@ def bird_eye_view(frame, distances_matrix, bottom_points, risk_count, transforma
 # boxes according to risk factor between two humans.
 # Red: High Risk
 # Orange: Low Risk
-# Green: No Risk 
-def social_distancing_view(frame, distances_matrix, boxes, risk_count):
+# Green: No Risk
+def social_distancing_view(frame, colored_pairs, colored_boxes):
 
     red = (0, 0, 255)
     green = (0, 255, 0)
     orange = (0,165,255)
 
-    for i in range(len(boxes)):
+    high_risk_count = 0
+    low_risk_count = 0
+    safe_count = 0
 
-        x,y,w,h = boxes[i][:]
-        frame = cv2.rectangle(frame,(x,y),(x+w,y+h),green,2)
+    # Draw the box for each detected person
+    for box in colored_boxes:
+        risk_lvl = box.risk
 
-    for i in range(len(distances_matrix)):
+        if risk_lvl == 0:
+            color = red
+            high_risk_count += 1
+        elif risk_lvl == 1:
+            color = orange
+            low_risk_count += 1
+        else:
+            color = green
+            safe_count += 1
+        x, y, w, h = box.parameters()
+        frame = cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
 
-        per1 = distances_matrix[i][0]
-        per2 = distances_matrix[i][1]
-        closeness = distances_matrix[i][2]
 
-        if closeness == 1:
-            x,y,w,h = per1[:]
-            frame = cv2.rectangle(frame,(x,y),(x+w,y+h),orange,2)
+    # Draw lines between boxes if the social distance is risky
+    for i in range(len(colored_pairs)):
+        box1 = colored_pairs[i][0]
+        box2 = colored_pairs[i][1]
+        risk_lvl = colored_pairs[i][2]
 
-            x1,y1,w1,h1 = per2[:]
-            frame = cv2.rectangle(frame,(x1,y1),(x1+w1,y1+h1),orange,2)
-
-            frame = cv2.line(frame, (int(x+w/2), int(y+h/2)), (int(x1+w1/2), int(y1+h1/2)),orange, 2)
-
-    for i in range(len(distances_matrix)):
-
-        per1 = distances_matrix[i][0]
-        per2 = distances_matrix[i][1]
-        closeness = distances_matrix[i][2]
-
-        if closeness == 0:
-            x,y,w,h = per1[:]
-            frame = cv2.rectangle(frame,(x,y),(x+w,y+h),red,2)
-
-            x1,y1,w1,h1 = per2[:]
-            frame = cv2.rectangle(frame,(x1,y1),(x1+w1,y1+h1),red,2)
-
-            frame = cv2.line(frame, (int(x+w/2), int(y+h/2)), (int(x1+w1/2), int(y1+h1/2)),red, 2)
+        if risk_lvl != 2:
+            if risk_lvl == 1:
+                color = orange
+            else:
+                color = red
+            x1,y1,w1,h1 = box1.parameters()
+            x2,y2,w2,h2 = box2.parameters()
+            frame = cv2.line(frame, (int(x1+w1/2), int(y1+h1/2)), (int(x2+w2/2), int(y2+h2/2)), color, 2)
 
     pad = np.full((140,frame.shape[1],3), [110, 110, 100], dtype=np.uint8)
     cv2.putText(pad, "Bounding box shows the level of risk to the person.", (50, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 100, 0), 2)
-    cv2.putText(pad, "-- HIGH RISK : " + str(risk_count[0]) + " people", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
-    cv2.putText(pad, "-- LOW RISK : " + str(risk_count[1]) + " people", (50, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,165,255), 1)
-    cv2.putText(pad, "-- SAFE : " + str(risk_count[2]) + " people", (50,  100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+    cv2.putText(pad, "-- HIGH RISK : " + str(high_risk_count) + " people", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, red, 1)
+    cv2.putText(pad, "-- LOW RISK : " + str(safe_count) + " people", (50, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, orange, 1)
+    cv2.putText(pad, "-- SAFE : " + str(safe_count) + " people", (50,  100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, green, 1)
     frame = np.vstack((frame,pad))
 
     return frame
@@ -265,10 +250,10 @@ def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1):
             points = mouse_pts
 
 
-    # Using first 4 points or coordinates for perspective transformation. The region marked by these 4 points are 
-    # considered ROI. This polygon shaped ROI is then warped into a rectangle which becomes the bird eye view. 
-    # This bird eye view then has the property property that points are distributed uniformally horizontally and 
-    # vertically(scale for horizontal and vertical direction will be different). So for bird eye view points are 
+    # Using first 4 points or coordinates for perspective transformation. The region marked by these 4 points are
+    # considered ROI. This polygon shaped ROI is then warped into a rectangle which becomes the bird eye view.
+    # This bird eye view then has the property property that points are distributed uniformally horizontally and
+    # vertically(scale for horizontal and vertical direction will be different). So for bird eye view points are
     # equally distributed, which was not case for normal view.
 
     src = np.float32(np.array(points[:4]))
@@ -316,6 +301,7 @@ def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1):
         layerOutputs = net.forward(ln1)
         end = time.time()
         boxes = []
+        boxes_4_cv = []
         confidences = []
         classIDs = []
 
@@ -329,23 +315,29 @@ def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1):
 
                     if confidence > confid:
 
-                        box = detection[0:4] * np.array([W, H, W, H])
-                        (centerX, centerY, width, height) = box.astype("int")
+                        rectangle = detection[0:4] * np.array([W, H, W, H])
+                        (centerX, centerY, width, height) = rectangle.astype("int")
 
                         x = int(centerX - (width / 2))
                         y = int(centerY - (height / 2))
 
-                        boxes.append([x, y, int(width), int(height)])
+                        boxes_4_cv.append([x, y, int(width), int(height)])
+                        boxes.append(box(x, y, int(width), int(height)))
                         confidences.append(float(confidence))
                         classIDs.append(classID)
 
-        idxs = cv2.dnn.NMSBoxes(boxes, confidences, confid, thresh)
-        font = cv2.FONT_HERSHEY_PLAIN
+        idxs = cv2.dnn.NMSBoxes(boxes_4_cv, confidences, confid, thresh)
+        # font = cv2.FONT_HERSHEY_PLAIN
+        # boxes1 = []
+        # for i in range(len(boxes)):
+        #     if i in idxs:
+        #         boxes1.append(boxes[i])
+        #         x,y,w,h = boxes[i]
+
         boxes1 = []
         for i in range(len(boxes)):
             if i in idxs:
                 boxes1.append(boxes[i])
-                x,y,w,h = boxes[i]
 
         if len(boxes1) == 0:
             count = count + 1
@@ -356,14 +348,14 @@ def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1):
         person_points = get_transformed_points(boxes1, prespective_transform)
 
         # Here we will calculate distance between transformed points(humans)
-        distances_mat, bxs_mat = get_distances(boxes1, person_points, distance_w, distance_h)
-        risk_count = count_risk(distances_mat)
+        distances_mat, colored_pairs, colored_boxes = get_distances(boxes1, person_points, distance_w, distance_h)
+        # risk_count = count_risk(distances_mat)
 
         frame1 = np.copy(frame)
 
-        # Draw bird eye view and frame with bouding boxes around humans according to risk factor    
-        bird_image = bird_eye_view(frame, distances_mat, person_points, risk_count, prespective_transform)
-        img = social_distancing_view(frame1, bxs_mat, boxes1, risk_count)
+        # Draw bird eye view and frame with bouding boxes around humans according to risk factor
+        bird_image = bird_eye_view(frame, distances_mat, person_points, prespective_transform)
+        img = social_distancing_view(frame1, colored_pairs, colored_boxes)
 
         # Show/write image and videos
         if count != 0:
@@ -408,11 +400,6 @@ def get_mouse_points(event, x, y, flags, param):
         if "mouse_pts" not in globals():
             mouse_pts = []
         mouse_pts.append((x, y))
-#         print("Point detected")
-#         print(mouse_pts)
-
-
-
 
 
 def main(output_dir="./output/", output_vid="./output_vid/", video_path="data/example2.mp4",
@@ -431,7 +418,7 @@ def main(output_dir="./output/", output_vid="./output_vid/", video_path="data/ex
     ln = net_yl.getLayerNames()
     ln1 = [ln[i[0] - 1] for i in net_yl.getUnconnectedOutLayers()]
 
-    # set mouse callback 
+    # set mouse callback
 
     cv2.namedWindow("image")
     cv2.setMouseCallback("image", get_mouse_points)
@@ -444,9 +431,4 @@ if __name__ == "__main__":
     confid = 0.01
     thresh = 0.1
     mouse_pts = []
-    main(video_path = "data/example3.mp4")
-
-
-
-
-
+    main(video_path = "data/example2.mp4")

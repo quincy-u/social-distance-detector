@@ -196,15 +196,19 @@ def social_distancing_view(frame, colored_pairs, colored_boxes):
         risk_lvl = box.risk
 
         if risk_lvl == 0:
+            sign = 'FK off'
             color = red
             high_risk_count += 1
         elif risk_lvl == 1:
+            sign = 'stay away from me'
             color = orange
             low_risk_count += 1
         else:
+            sign = 'OHH YEEE'
             color = green
             safe_count += 1
         x, y, w, h = box.parameters()
+        cv2.putText(frame, sign, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
         frame = cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
 
 
@@ -403,7 +407,7 @@ def get_mouse_points(event, x, y, flags, param):
         mouse_pts.append((x, y))
 
 
-def main(output_dir="./output/", output_vid="./output_vid/", video_path="data/example2.mp4",
+def main(output_dir="./output/", output_vid="./output_vid/", video_path="data/example1.mp4",
          weights_path="models/yolov3.weights", config_path="models/yolov3.cfg"):
     """
     :param output_dir: the path of output video
@@ -425,7 +429,7 @@ def main(output_dir="./output/", output_vid="./output_vid/", video_path="data/ex
     cv2.setMouseCallback("image", get_mouse_points)
     np.random.seed(62)
 
-    calculate_social_distancing(video_path, net_yl, output_dir, output_vid, ln1)
+    calculate_social_distancing(video_path, net_yl, output_dir, ln1)
 
 
 if __name__ == "__main__":

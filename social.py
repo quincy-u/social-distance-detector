@@ -38,6 +38,7 @@ def find_mid_points(box):
 def get_transformed_points(boxes, transformation_matrix):
     '''
     get the transformed points
+
     :param boxes: the list of boxes for each detected people
     :param transformation_matrix: the transformation matrix
     :return: the transformed point of each person
@@ -56,6 +57,7 @@ def get_transformed_points(boxes, transformation_matrix):
 def get_distances(boxes, person_points, distance_w, distance_h):
     """
     Calculates distance between all pairs, if they are close, give them risk level according to the distance
+
     :param boxes: boxes of each recognized Pedestrian in the image
     :param person_points: Pedestrians' coordinates after transformation
     :param distance_w: number of pixels in 6 ft length horizontally
@@ -74,9 +76,9 @@ def get_distances(boxes, person_points, distance_w, distance_h):
         for j in range(len(person_points)):
             if i != j:
                 # calculate the euclidean distance and normalize it to 6 ft which is 180cm.
-                distance = int(np.sqrt(
-                    ((float((abs(person_points[i][1] - person_points[j][1]) / distance_h) * 180)) ** 2) + (
-                            (float((abs(person_points[i][0] - person_points[j][0]) / distance_w) * 180)) ** 2)))
+                distance = int( 180 * np.sqrt(
+                    ((float((abs(person_points[i][1] - person_points[j][1]) / distance_h))) ** 2) + (
+                            (float((abs(person_points[i][0] - person_points[j][0]) / distance_w))) ** 2)))
 
                 if distance <= 180:
                     risk_lvl = high_risk
@@ -100,6 +102,7 @@ def get_distances(boxes, person_points, distance_w, distance_h):
 def transform_frame(frame, transformation_matrix):
     """
     transform the selected region to bird's eye view
+
     :param frame: the original image
     :param transformation_matrix: the transformation matrix
     :return: the image after transform, width scale, and height scale
@@ -173,6 +176,7 @@ def bird_eye_view(frame, distances_matrix, bottom_points, transformation_matrix)
 def social_distancing_view(frame, colored_pairs, colored_boxes):
     '''
     Draw the boxes and lines on the current frame
+
     :param frame: the initial clean frame
     :param colored_pairs: all the paris of the boxes in the form of (box1, box2, risk_level)
     :param colored_boxes: the set of all the boxes with parameters set correctly
@@ -192,15 +196,15 @@ def social_distancing_view(frame, colored_pairs, colored_boxes):
         risk_lvl = box.risk
 
         if risk_lvl == 0:
-            sign = 'FK off'
+            sign = 'Danger'
             color = red
             high_risk_count += 1
         elif risk_lvl == 1:
-            sign = 'stay away from me'
+            sign = 'Careful'
             color = orange
             low_risk_count += 1
         else:
-            sign = 'OHH YEEE'
+            sign = 'Safe'
             color = green
             safe_count += 1
         x, y, w, h = box.parameters()
@@ -224,10 +228,9 @@ def social_distancing_view(frame, colored_pairs, colored_boxes):
             frame = cv2.line(frame, (int(x1+w1/2), int(y1+h1/2)), (int(x2+w2/2), int(y2+h2/2)), color, 2)
 
     pad = np.full((140,frame.shape[1],3), [110, 110, 100], dtype=np.uint8)
-    cv2.putText(pad, "Bounding box shows the level of risk to the person.", (50, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 100, 0), 2)
-    cv2.putText(pad, "-- HIGH RISK : " + str(high_risk_count) + " people", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, red, 1)
-    cv2.putText(pad, "-- LOW RISK : " + str(safe_count) + " people", (50, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, orange, 1)
-    cv2.putText(pad, "-- SAFE : " + str(safe_count) + " people", (50,  100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, green, 1)
+    cv2.putText(pad, "o High Risk : " + str(high_risk_count) + " people", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, red, 1)
+    cv2.putText(pad, "o Low Risk : " + str(safe_count) + " people", (50, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, orange, 1)
+    cv2.putText(pad, "o Safe : " + str(safe_count) + " people", (50,  100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, green, 1)
     frame = np.vstack((frame,pad))
 
     return frame
@@ -272,9 +275,10 @@ def calculate_social_distancing(vid_path, net, output_dir, ln1):
     # prespective_transform = cv2.getPerspectiveTransform(src, dst)
     new_frame, scale_w, scale_h = transform_frame(frame, prespective_transform)
 
+    file_name = vid_path.split('/')[-1].split('.')[0]
     fourcc = cv2.VideoWriter_fourcc(*"XVID")
-    output_movie = cv2.VideoWriter("./output_vid/distancing.avi", fourcc, fps, (width, height+140))
-    bird_movie = cv2.VideoWriter("./output_vid/bird_eye_view.avi", fourcc, fps, (int(width * scale_w), int(height * scale_h)))
+    output_movie = cv2.VideoWriter("./output_vid/{}_distancing.avi".format(file_name), fourcc, fps, (width, height+140))
+    bird_movie = cv2.VideoWriter("./output_vid/{}_bird_eye_view.avi".format(file_name), fourcc, fps, (int(width * scale_w), int(height * scale_h)))
 
 
     while True:
@@ -364,7 +368,7 @@ def calculate_social_distancing(vid_path, net, output_dir, ln1):
             output_movie.write(img)
             bird_movie.write(bird_image)
 
-            cv2.imshow('Bird Eye View', img)
+            cv2.imshow('Social distance', img)
             cv2.imwrite(output_dir+"frame%d.jpg" % count, img)
             cv2.imwrite(output_dir+"bird_eye_view/frame%d.jpg" % count, bird_image)
 
@@ -433,4 +437,7 @@ if __name__ == "__main__":
     confid = 0.05
     thresh = 0.1
     mouse_pts = []
-    main(video_path = "data/example1.mp4")
+    main(video_path="data/example3.mp4")
+    # data_lst = ["data/example.mp4", "data/example1.mp4", "data/example2.mp4", "data/example3.mp4"]
+    # for data in data_lst:
+    #     main(video_path=data)

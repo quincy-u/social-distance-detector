@@ -114,16 +114,15 @@ def transform_frame(frame, transformation_matrix):
     return new_frame, scale_w, scale_h
 
 
-# Draw the Bird Eye View for region selected. Red, Orange, Green points represents different risk levels to human.
-# Red: High Risk, Orange: Low Risk, Green: No Risk
+# Draw the Bird Eye View for region selected. Red, Yellow, Green points represents different risk levels to human.
+# Red: High Risk, Yellow: Low Risk, Green: No Risk
 def bird_eye_view(frame, distances_matrix, bottom_points, transformation_matrix):
     h = frame.shape[0]
     w = frame.shape[1]
 
     red = (0, 0, 255)
     green = (0, 255, 0)
-    orange = (0, 165, 255)
-    white = (200, 200, 200)
+    yellow = (255, 255, 0)
 
     new_frame, scale_w, scale_h = transform_frame(frame, transformation_matrix)
 
@@ -148,7 +147,7 @@ def bird_eye_view(frame, distances_matrix, bottom_points, transformation_matrix)
             if (distances_matrix[i][1] not in r) and (distances_matrix[i][1] not in g) and (distances_matrix[i][1] not in o):
                 o.append(distances_matrix[i][1])
 
-            new_frame = cv2.line(new_frame, (int(distances_matrix[i][0][0] * scale_w), int(distances_matrix[i][0][1]* scale_h)), (int(distances_matrix[i][1][0] * scale_w), int(distances_matrix[i][1][1] * scale_h)), orange, 2)
+            new_frame = cv2.line(new_frame, (int(distances_matrix[i][0][0] * scale_w), int(distances_matrix[i][0][1]* scale_h)), (int(distances_matrix[i][1][0] * scale_w), int(distances_matrix[i][1][1] * scale_h)), yellow, 2)
 
     for i in range(len(distances_matrix)):
 
@@ -161,7 +160,7 @@ def bird_eye_view(frame, distances_matrix, bottom_points, transformation_matrix)
     for i in bottom_points:
         new_frame = cv2.circle(new_frame, (int(i[0]  * scale_w), int(i[1] * scale_h)), 5, green, 5)
     for i in o:
-        new_frame = cv2.circle(new_frame, (int(i[0]  * scale_w), int(i[1] * scale_h)), 5, orange, 5)
+        new_frame = cv2.circle(new_frame, (int(i[0]  * scale_w), int(i[1] * scale_h)), 5, yellow, 5)
     for i in r:
         new_frame = cv2.circle(new_frame, (int(i[0]  * scale_w), int(i[1] * scale_h)), 5, red, 5)
 
@@ -171,7 +170,7 @@ def bird_eye_view(frame, distances_matrix, bottom_points, transformation_matrix)
 # Draw bounding boxes according to risk factor for humans in a frame and draw lines between
 # boxes according to risk factor between two humans.
 # Red: High Risk
-# Orange: Low Risk
+# Yellow: Low Risk
 # Green: No Risk
 def social_distancing_view(frame, colored_pairs, colored_boxes):
     '''
@@ -185,7 +184,7 @@ def social_distancing_view(frame, colored_pairs, colored_boxes):
 
     red = (0, 0, 255)
     green = (0, 255, 0)
-    orange = (0,165,255)
+    yellow = (0,165,255)
 
     high_risk_count = 0
     low_risk_count = 0
@@ -201,7 +200,7 @@ def social_distancing_view(frame, colored_pairs, colored_boxes):
             high_risk_count += 1
         elif risk_lvl == 1:
             sign = 'Careful'
-            color = orange
+            color = yellow
             low_risk_count += 1
         else:
             sign = 'Safe'
@@ -220,17 +219,26 @@ def social_distancing_view(frame, colored_pairs, colored_boxes):
 
         if risk_lvl != 2:
             if risk_lvl == 1:
-                color = orange
+                color = yellow
             else:
                 color = red
             x1,y1,w1,h1 = box1.parameters()
             x2,y2,w2,h2 = box2.parameters()
             frame = cv2.line(frame, (int(x1+w1/2), int(y1+h1/2)), (int(x2+w2/2), int(y2+h2/2)), color, 2)
 
-    pad = np.full((140,frame.shape[1],3), [110, 110, 100], dtype=np.uint8)
-    cv2.putText(pad, "o High Risk : " + str(high_risk_count) + " people", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, red, 1)
-    cv2.putText(pad, "o Low Risk : " + str(safe_count) + " people", (50, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, orange, 1)
-    cv2.putText(pad, "o Safe : " + str(safe_count) + " people", (50,  100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, green, 1)
+    pad = np.full((140,frame.shape[1],3), [255,204,204], dtype=np.uint8)
+    font_size = 0.8
+    font_thickness = 2
+    cv2.putText(pad, "Count of people:", (20, 30), font, font_size, (0, 51, 102), font_thickness)
+    cv2.putText(pad, "overly close :<", (100, 70), font, font_size, red, font_thickness)
+    cv2.putText(pad, "a little close :|", (350, 70), font, font_size, yellow, font_thickness)
+    cv2.putText(pad, "safe :>", (600, 70), font, font_size, green, font_thickness)
+    cv2.putText(pad, str(low_risk_count), (180, 110), font, font_size, red, font_thickness)
+    cv2.putText(pad, str(high_risk_count), (430, 110), font, font_size, yellow, font_thickness)
+    cv2.putText(pad, str(safe_count) , (680, 110), font, font_size, green, font_thickness)
+    # cv2.putText(pad, "Count of people: " + str(safe_count) + " ;", (50, 100), font, 0.6, (255, 255, 255), 1)
+    # cv2.putText(pad, "# of people staying a little close: " + str(safe_count) + " ;", (50, 80), font, 0.6, (255,255,255), 1)
+    # cv2.putText(pad, "# of people staying over close: " + str(high_risk_count) + " ;", (50, 60), font, 0.6, (255,255,255), 1)
     frame = np.vstack((frame,pad))
 
     return frame
@@ -240,6 +248,8 @@ def calculate_social_distancing(vid_path, net, output_dir, ln1):
 
     points = []
     global image
+    global font
+    font = cv2.FONT_HERSHEY_SIMPLEX
     count = 0
     vs = cv2.VideoCapture(vid_path)
 
@@ -280,7 +290,7 @@ def calculate_social_distancing(vid_path, net, output_dir, ln1):
     output_movie = cv2.VideoWriter("./output_vid/{}_distancing.avi".format(file_name), fourcc, fps, (width, height+140))
     bird_movie = cv2.VideoWriter("./output_vid/{}_bird_eye_view.avi".format(file_name), fourcc, fps, (int(width * scale_w), int(height * scale_h)))
 
-
+    fps_time = time.time()
     while True:
 
         (success, frame) = vs.read()
@@ -309,9 +319,7 @@ def calculate_social_distancing(vid_path, net, output_dir, ln1):
         # YOLO v3
         blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=False)
         net.setInput(blob)
-        start = time.time()
         layerOutputs = net.forward(ln1)
-        end = time.time()
         boxes = []
         boxes_4_cv = []
         confidences = []
@@ -363,6 +371,13 @@ def calculate_social_distancing(vid_path, net, output_dir, ln1):
         bird_image = bird_eye_view(frame, distances_mat, person_points, prespective_transform)
         img = social_distancing_view(frame1, colored_pairs, colored_boxes)
 
+        # Write Fps
+        temp = time.time()
+        img_row, img_col,_ = img.shape
+        cv2.putText(img, "FPS: " + str(int(1/(temp - fps_time))), (int(img_col * 0.85), int(img_row * 0.95)), font, 0.8, (255,255,255), 2)
+        fps_time = time.time()
+
+
         # Show/write image and videos
         if count != 0:
             output_movie.write(img)
@@ -409,7 +424,7 @@ def get_mouse_points(event, x, y, flags, param):
 
 
 def main(output_dir="./output/", output_vid="./output_vid/", video_path="data/example1.mp4",
-         weights_path="models/yolov4-tiny-pedestrian_last.weights", config_path="models/yolov4-tiny-pedestrian.cfg"):
+         weights_path="models/yolov3.weights", config_path="models/yolov3.cfg"):
     """
     :param output_dir: the path of output video
     :param output_vid: the path of output bird's eye view video
@@ -437,7 +452,7 @@ if __name__ == "__main__":
     confid = 0.05
     thresh = 0.1
     mouse_pts = []
-    main(video_path="data/example3.mp4")
+    main(video_path="data/example2.mp4")
     # data_lst = ["data/example.mp4", "data/example1.mp4", "data/example2.mp4", "data/example3.mp4"]
     # for data in data_lst:
     #     main(video_path=data)

@@ -122,7 +122,7 @@ def bird_eye_view(frame, distances_matrix, bottom_points, transformation_matrix)
 
     red = (0, 0, 255)
     green = (0, 255, 0)
-    yellow = (255, 255, 0)
+    yellow = (0, 255, 255)
 
     new_frame, scale_w, scale_h = transform_frame(frame, transformation_matrix)
 
@@ -233,8 +233,8 @@ def social_distancing_view(frame, colored_pairs, colored_boxes):
     cv2.putText(pad, "overly close :(", (100, 70), font, font_size, red, font_thickness)
     cv2.putText(pad, "a little close :|", (350, 70), font, font_size, yellow, font_thickness)
     cv2.putText(pad, "safe :)", (600, 70), font, font_size, green, font_thickness)
-    cv2.putText(pad, str(low_risk_count), (180, 110), font, font_size, red, font_thickness)
-    cv2.putText(pad, str(high_risk_count), (430, 110), font, font_size, yellow, font_thickness)
+    cv2.putText(pad, str(high_risk_count), (180, 110), font, font_size, red, font_thickness)
+    cv2.putText(pad, str(low_risk_count), (430, 110), font, font_size, yellow, font_thickness)
     cv2.putText(pad, str(safe_count) , (680, 110), font, font_size, green, font_thickness)
     # cv2.putText(pad, "Count of people: " + str(safe_count) + " ;", (50, 100), font, 0.6, (255, 255, 255), 1)
     # cv2.putText(pad, "# of people staying a little close: " + str(safe_count) + " ;", (50, 80), font, 0.6, (255,255,255), 1)
@@ -452,7 +452,7 @@ if __name__ == "__main__":
     confid = 0.05
     thresh = 0.1
     mouse_pts = []
-    main(video_path="data/example2.mp4")
+    main(video_path="data/example.mp4")
     # data_lst = ["data/example.mp4", "data/example1.mp4", "data/example2.mp4", "data/example3.mp4"]
     # for data in data_lst:
     #     main(video_path=data)

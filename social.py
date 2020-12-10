@@ -113,6 +113,25 @@ def transform_frame(frame, transformation_matrix):
     scale_h = int(new_frame.shape[1] / frame.shape[1])
     return new_frame, scale_w, scale_h
 
+def homography(src, dst):
+    '''
+    use src and dst point to calculate a homography transformation matrix
+
+    :param src: the source points
+    :param dst: the destination points
+    :return: a transformation matrix
+    '''
+    Ax = []
+    for i in range(0, len(src)):
+        x, y = src[i][0], src[i][1]
+        u, v = dst[i][0], dst[i][1]
+        Ax.append([x, y, 1, 0, 0, 0, -u*x, -u*y, -u])
+        Ax.append([0, 0, 0, x, y, 1, -v*x, -v*y, -v])
+    Ax = np.asarray(Ax)
+    U, S, Vh = np.linalg.svd(Ax)
+    L = Vh[-1, :] / Vh[-1, -1]
+    H = L.reshape(3, 3)
+    return H
 
 # Draw the Bird Eye View for region selected. Red, Yellow, Green points represents different risk levels to human.
 # Red: High Risk, Yellow: Low Risk, Green: No Risk
@@ -281,8 +300,9 @@ def calculate_social_distancing(vid_path, net, output_dir, ln1):
 
     src = np.float32(np.array(points[:4]))
     dst = np.float32([[0, H], [W, H], [W, 0], [0, 0]])
-    prespective_transform, _ = cv2.findHomography(src, dst)
+    # prespective_transform, _ = cv2.findHomography(src, dst)
     # prespective_transform = cv2.getPerspectiveTransform(src, dst)
+    prespective_transform = homography(src, dst)
     new_frame, scale_w, scale_h = transform_frame(frame, prespective_transform)
 
     file_name = vid_path.split('/')[-1].split('.')[0]

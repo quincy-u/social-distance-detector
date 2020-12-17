@@ -105,7 +105,7 @@ We experimented on applying different transformation methods when we tried to ma
 
 
 
-![alt_text](images/image8.png "image_tooltip")
+![alt_text](source_img/image8.png "image_tooltip")
                     
 
 You can see in the comparison of the final bird-eye-view image, homography works much better. Hence we are finally using homography transformation.
@@ -119,7 +119,7 @@ Some other experiments we tried are to test the models on videos with different 
 
 
 
-![alt_text](images/image10.png "image_tooltip")
+![alt_text](source_img/image10.png "image_tooltip")
 
 
 If the camera is too high, we can have a perfect bird’s eye view of the pedestrians, but we may have some trouble detecting pedestrians. Due to the architecture of yolo, small objects are harder to predict and cameras from a high perspective tend to capture people of small size on the image. Hence some people cannot be detected as shown in the graph. 
@@ -128,17 +128,15 @@ If the camera is too high, we can have a perfect bird’s eye view of the pedest
 
 
 
-![alt_text](images/image11.png "image_tooltip")
+![alt_text](source_img/image11.png "image_tooltip")
 
 
 We believe the camera from height about 3 meters will best suit because the video can be easily transformed to a sensible bird’s eye view video. Although there are lots of people in the graph, we can still detect most of them.
 
 
 
-<p id="gdcalert5" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image5.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert6">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
 
-
-![alt_text](images/image12.png "image_tooltip")
+![alt_text](source_img/image12.png "image_tooltip")
 
 
 
@@ -179,7 +177,7 @@ The team progresses as a whole and all members are kind enough to help to diagno
 
 [5] Redmon, J., Divvala, S., Girshick, R. and Farhadi, A., 2016.You Only Look Once: Unified, Real-Time Object Detection. [online] Available at: &lt;https://arxiv.org/pdf/1506.02640.pdf> [Accessed 4 November 2020].
 
-[...] 你们把reference写一下，上面俩然后看看能不能再加一点
+[...] 
 
 
 <!-- Footnotes themselves at the bottom. -->
@@ -190,3 +188,4 @@ The team progresses as a whole and all members are kind enough to help to diagno
 
 [^2]:
        The error depends on the input error, here we assume there is no error on our input
+

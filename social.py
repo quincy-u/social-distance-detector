@@ -472,7 +472,13 @@ if __name__ == "__main__":
     confid = 0.05
     thresh = 0.1
     mouse_pts = []
-    main(video_path="data/example.mp4")
+    main(video_path="data/example1.mp4",
+         weights_path="models/yolov4-tiny-pedestrian_last.weights",
+         config_path="models/yolov4-tiny-pedestrian.cfg")
+
+    # main(video_path="data/example1.mp4",
+    #      weights_path="models/yolov3.weights",
+    #      config_path="models/yolov3.cfg")
     # data_lst = ["data/example.mp4", "data/example1.mp4", "data/example2.mp4", "data/example3.mp4"]
     # for data in data_lst:
     #     main(video_path=data)
